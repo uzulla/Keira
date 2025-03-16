@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Keira\WebSocket;
 
-use Amp\Http\Server\HttpServer;
+use Amp\Http\Server\DefaultErrorHandler;
+use Amp\Http\Server\SocketHttpServer;
 use Amp\Http\Server\Router;
-use Amp\Socket\Server;
+use Amp\Websocket\Server\Websocket;
+use Amp\Websocket\Server\AllowOriginAcceptor;
+// Socket listening is now handled by SocketHttpServer
 use Keira\Monitor\MonitorManager;
 use Psr\Log\LoggerInterface;
 
@@ -15,7 +18,7 @@ use Psr\Log\LoggerInterface;
  */
 class WebSocketServer
 {
-    private HttpServer $server;
+    private SocketHttpServer $server;
     
     /**
      * Constructor
@@ -35,24 +38,24 @@ class WebSocketServer
     {
         $this->logger->info("[INFO][APP] Starting WebSocket server on {$this->host}:{$this->port}");
         
-        // Create socket server
-        $socketServer = Server::listen("{$this->host}:{$this->port}");
+        // Create HTTP server
+        $this->server = SocketHttpServer::createForDirectAccess($this->logger);
         
-        // Create router
-        $router = new Router();
+        // Create router and error handler
+        $errorHandler = new DefaultErrorHandler();
+        $router = new Router($this->server, $this->logger, $errorHandler);
         
         // Register WebSocket route
-        $router->addRoute('GET', '/realtime/', new WebSocketHandler($this->monitorManager, $this->logger));
+        $webSocketHandler = new WebSocketHandler($this->monitorManager, $this->logger);
+        $acceptor = new AllowOriginAcceptor(['*']); // Allow any origin for this example
+        $websocket = new Websocket($this->server, $this->logger, $acceptor, $webSocketHandler);
+        $router->addRoute('GET', '/realtime/', $websocket);
         
-        // Create HTTP server
-        $this->server = new HttpServer(
-            [$socketServer],
-            $router,
-            $this->logger
-        );
+        // Expose server on hostname:port
+        $this->server->expose("{$this->host}:{$this->port}");
         
         // Start the server
-        $this->server->start();
+        $this->server->start($router, $errorHandler);
     }
 
     /**
