@@ -1,15 +1,17 @@
-# Keira - PHP Web Server Monitor
+# Keira - High-Performance Web Server Monitor
 
-Keira is a high-performance web server monitoring application built with PHP 8.3 and amphp. It allows you to monitor multiple web servers in real-time with minimal resource usage.
+Keira is a high-performance web server monitoring application built with PHP 8.3 and amphp. It allows you to monitor multiple servers at high frequency (e.g., 100 servers every 500ms) and provides real-time alerts when issues are detected.
 
 ## Features
 
-- High-frequency monitoring of multiple servers (targeting 100 servers every 500ms)
-- Real-time alerts via Slack when thresholds are exceeded
-- 24-hour data retention for response time history
-- REST API for monitoring status
-- WebSocket for real-time updates
-- Signal handling for configuration reloading and monitoring control
+- **High-frequency monitoring**: Monitor hundreds of servers with configurable intervals
+- **Real-time alerts**: Get instant Slack notifications when servers experience issues
+- **WebSocket support**: Real-time updates via WebSocket
+- **RESTful API**: Access monitoring data via a simple API
+- **Signal handling**: Control the application with UNIX signals
+- **Configurable thresholds**: Set custom alert thresholds for each server
+- **TLS error handling**: Option to ignore TLS certificate errors
+- **24-hour data retention**: Automatically cleans up old monitoring data
 
 ## Requirements
 
