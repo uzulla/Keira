@@ -36,12 +36,21 @@ class SlackNotifier
     {
         $timestamp = $result->getTimestamp()->format('Y-m-d H:i:s');
         $error = $result->getError() ?? 'Unknown error';
+        $responseTime = $result->getResponseTimeMs();
+        
+        // Format the error message based on the type of error
+        $errorDetail = match (true) {
+            str_contains($error, 'Timeout') => "タイムアウト (設定値: {$responseTime}ms)",
+            str_contains($error, 'Invalid Status Code') => "ステータスコードエラー: {$result->getHttpStatus()} (設定値: 200)",
+            str_contains($error, 'Expected content not found') => "期待する内容が見つかりません",
+            default => "{$error} (設定値: {$responseTime}ms)"
+        };
         
         $message = <<<EOT
 🚨 [ALERT] {$url} (id: {$id}) が{$threshold}回連続エラーになりました。
 発生時刻: {$timestamp}  
 URL: {$url}
-直近の原因: {$error} (設定値: {$result->getResponseTimeMs()}ms)
+直近の原因: {$errorDetail}
 EOT;
 
         $this->sendMessage($message);
@@ -82,6 +91,8 @@ EOT;
                 
                 if ($response->getStatus() !== 200) {
                     $this->logger->error("[ERROR][APP] Failed to send Slack notification: HTTP {$response->getStatus()}");
+                } else {
+                    $this->logger->info("[INFO][APP] Slack notification sent successfully");
                 }
             } catch (\Throwable $e) {
                 $this->logger->error("[ERROR][APP] Error sending Slack notification: {$e->getMessage()}");
