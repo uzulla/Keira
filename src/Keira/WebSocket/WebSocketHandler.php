@@ -45,7 +45,8 @@ class WebSocketHandler implements WebsocketClientHandler
         Request $request, 
         Response $response
     ): void {
-        $this->logger->info("[INFO][APP] WebSocket client connected");
+        $this->logger->info("[INFO][APP] WebSocket client connected from " . $request->getHeader('User-Agent') . ", Origin: " . $request->getHeader('Origin'));
+        $this->logger->debug("[DEBUG][APP] WebSocket connection headers: " . json_encode($request->getHeaders()));
         
         // Add client to the gateway
         $this->gateway->addClient($client);
@@ -72,7 +73,21 @@ class WebSocketHandler implements WebsocketClientHandler
         $payload = json_encode($result->toArray());
         
         if ($payload) {
-            $this->gateway->broadcastText($payload);
+            $this->logger->debug("[DEBUG][APP] Broadcasting monitor result to " . count($this->gateway->getClients()) . " WebSocket clients: " . substr($payload, 0, 100) . "...");
+            try {
+                $this->gateway->broadcastText($payload);
+                $this->logger->debug("[DEBUG][APP] Broadcast successful");
+            } catch (\Throwable $e) {
+                $this->logger->error("[ERROR][APP] Failed to broadcast: " . $e->getMessage());
+            }
         }
+    }
+    
+    /**
+     * Get the current clients
+     */
+    public function getConnectedClientsCount(): int
+    {
+        return count($this->gateway->getClients());
     }
 }

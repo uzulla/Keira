@@ -47,7 +47,19 @@ class WebSocketServer
         
         // Register WebSocket route
         $webSocketHandler = new WebSocketHandler($this->monitorManager, $this->logger);
-        $acceptor = new AllowOriginAcceptor(['*']); // Allow any origin for this example
+        
+        // Allow more specific origins for the WebSocket connections
+        $origins = [
+            'http://localhost:' . $this->port,
+            'http://127.0.0.1:' . $this->port,
+            'http://0.0.0.0:' . $this->port,
+            'ws://localhost:' . $this->port,
+            'ws://127.0.0.1:' . $this->port,
+            'ws://0.0.0.0:' . $this->port,
+        ];
+        $this->logger->debug("[DEBUG][APP] Setting up WebSocket with allowed origins: " . implode(", ", $origins));
+        $acceptor = new \Amp\Websocket\Server\AllowOriginAcceptor($origins);
+        
         $websocket = new Websocket($this->server, $this->logger, $acceptor, $webSocketHandler);
         $router->addRoute('GET', '/realtime/', $websocket);
         
