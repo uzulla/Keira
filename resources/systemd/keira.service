@@ -1,0 +1,41 @@
+[Unit]
+Description=Keira Web Monitor
+Documentation=https://github.com/uzulla/Keira
+After=network.target
+
+[Service]
+Type=simple
+User=keira
+Group=keira
+WorkingDirectory=/opt/keira
+ExecStart=/usr/bin/php /opt/keira/bin/keira.php
+Environment=KEIRA_CONFIG_PATH=/etc/keira/config.json
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/log/keira /var/run/keira
+
+# Process resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Signal handling
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=keira
+
+[Install]
+WantedBy=multi-user.target
