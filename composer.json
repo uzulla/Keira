@@ -16,7 +16,6 @@
         "amphp/websocket-server": "^4.0",
         "amphp/log": "^2.0",
         "amphp/process": "^2.0",
-        "amphp/signal": "^2.0",
         "monolog/monolog": "^3.0"
     },
     "require-dev": {
