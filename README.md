@@ -58,8 +58,12 @@ Create a configuration file in JSON format:
 ## Usage
 
 ```bash
-# Start the monitor with a configuration file
+# Start the monitor with a configuration file (command line argument)
 php bin/keira.php --config=/path/to/config.json
+
+# Alternatively, use an environment variable to specify the config path
+export KEIRA_CONFIG_PATH=/path/to/config.json
+php bin/keira.php
 ```
 
 ## Signal Handling

@@ -13,7 +13,12 @@ if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
 
 // Parse command line arguments
 $options = getopt('', ['config:']);
-$configPath = $options['config'] ?? null;
+
+// Config path priority:
+// 1. Command line argument: --config
+// 2. Environment variable: KEIRA_CONFIG_PATH
+// 3. Default path in Application class
+$configPath = $options['config'] ?? getenv('KEIRA_CONFIG_PATH') ?: null;
 
 // Get and display the process ID
 $pid = getmypid();
