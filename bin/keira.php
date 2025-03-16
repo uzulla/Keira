@@ -15,6 +15,10 @@ if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
 $options = getopt('', ['config:']);
 $configPath = $options['config'] ?? null;
 
+// Get and display the process ID
+$pid = getmypid();
+echo "Keira Web Monitor starting with PID: {$pid}\n";
+
 try {
     // Create and initialize the application
     $app = new Keira\Application($configPath);

@@ -48,7 +48,8 @@ class Application
      */
     public function initialize(): void
     {
-        $this->appLogger->info("Starting Keira Web Monitor");
+        $pid = getmypid();
+        $this->appLogger->info("Starting Keira Web Monitor (PID: {$pid})");
         
         try {
             // Load configuration
