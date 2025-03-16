@@ -68,6 +68,13 @@ class MonitorManager
      */
     public function configure(array $monitorsConfig): void
     {
+        $wasRunning = $this->isRunning;
+        
+        // Stop monitoring to update configs
+        if ($wasRunning) {
+            $this->stop();
+        }
+        
         $newMonitors = [];
         
         foreach ($monitorsConfig as $monitorConfig) {
@@ -90,6 +97,11 @@ class MonitorManager
         }
         
         $this->monitors = $newMonitors;
+        
+        // Restart monitoring if it was running
+        if ($wasRunning) {
+            $this->start();
+        }
     }
 
     /**
