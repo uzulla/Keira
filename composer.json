@@ -1,0 +1,28 @@
+{
+    "name": "keira/web-monitor",
+    "description": "High-performance web server monitoring application built with PHP 8.3 and amphp",
+    "type": "project",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Keira\\": "src/Keira/"
+        }
+    },
+    "require": {
+        "php": "^8.3",
+        "amphp/amp": "^3.0",
+        "amphp/http-client": "^5.0",
+        "amphp/http-server": "^3.0",
+        "amphp/websocket-server": "^4.0",
+        "amphp/log": "^2.0",
+        "amphp/process": "^2.0",
+        "amphp/signal": "^2.0",
+        "monolog/monolog": "^3.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0"
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}
