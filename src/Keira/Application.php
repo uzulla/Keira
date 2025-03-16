@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Keira;
 
-use Amp\Loop;
+use Revolt\EventLoop;
 use Keira\Api\ApiServer;
 use Keira\Config\ConfigLoader;
 use Keira\Monitor\MonitorManager;
@@ -128,6 +128,6 @@ class Application
     public function run(): void
     {
         // Run the event loop
-        Loop::run();
+        EventLoop::run();
     }
 }
