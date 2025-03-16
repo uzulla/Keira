@@ -1,0 +1,30 @@
+{
+  "slack": {
+    "webhook_url": "https://hooks.slack.com/services/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",
+    "channel": "#dev_null"
+  },
+  "monitors": [
+    {
+      "id": "cfe-jp",
+      "url": "https://cfe.jp",
+      "interval_ms": 1000,
+      "timeout_ms": 5000,
+      "expected_status": 200,
+      "expected_content": "cfe.jp",
+      "alert_threshold": 3,
+      "ignore_tls_error": false,
+      "is_active": true
+    },
+    {
+      "id": "cfe-jp-404",
+      "url": "https://cfe.jp/404_for_test",
+      "interval_ms": 1000,
+      "timeout_ms": 5000,
+      "expected_status": 200,
+      "expected_content": "OK",
+      "alert_threshold": 3,
+      "ignore_tls_error": false,
+      "is_active": true
+    }
+  ]
+}
