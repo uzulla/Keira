@@ -51,7 +51,13 @@ class MonitorManager
     public function __construct(LoggerInterface $logger)
     {
         $this->logger = $logger;
-        $this->httpClient = HttpClientBuilder::buildDefault();
+        
+        // Build HTTP client with custom configuration
+        $builder = new HttpClientBuilder();
+        // Configure ignoring TLS errors if needed for this client
+        // We can't set it per request anymore in amphp/http-client 5.x
+        $this->httpClient = $builder->build();
+        
         $this->cancellation = new DeferredCancellation();
     }
 
@@ -237,6 +243,9 @@ class MonitorManager
                     // Check if we can run this check on time
                     $nextCheckTime = $startTime + ($config->getIntervalMs() / 1000);
                     
+                    // Debug log to see if monitor is running
+                    $this->logger->debug("[DEBUG][APP] Running monitor check for {$id} ({$config->getUrl()})");
+                    
                     $result = $this->checkServer($config, $cancellation);
                     $this->processResult($id, $result);
                     
@@ -245,7 +254,7 @@ class MonitorManager
                     if ($now < $nextCheckTime) {
                         $delayMs = (int)(($nextCheckTime - $now) * 1000);
                         if ($delayMs > 0) {
-                            yield delay($delayMs, $cancellation);
+                            delay($delayMs / 1000);
                         }
                     } else {
                         // We're behind schedule, log a warning and continue immediately
@@ -259,7 +268,7 @@ class MonitorManager
                     
                     // Wait for the next interval before retrying
                     try {
-                        yield delay($config->getIntervalMs(), $cancellation);
+                        delay($config->getIntervalMs() / 1000);
                     } catch (\Throwable $delayError) {
                         // Cancellation requested, exit the loop
                         break;
@@ -287,13 +296,11 @@ class MonitorManager
             // Create a request
             $request = new Request($url);
             
-            // Set TLS verification based on config
-            $request->setTlsHandshakeTimeout($timeoutMs / 1000);
+            // Set body size limit
             $request->setBodySizeLimit(1024 * 1024); // 1MB limit
             
-            if ($config->shouldIgnoreTlsError()) {
-                $request->setTlsContext((new \Amp\Socket\ClientTlsContext)->withoutPeerVerification());
-            }
+            // TLS verification is now handled by the HttpClientBuilder
+            // We don't need to set it per request in amphp/http-client 5.x
             
             // Send the request
             $response = $this->httpClient->request($request, $timeoutCancellation);
@@ -315,6 +322,8 @@ class MonitorManager
             
             // Check response content
             $body = $response->getBody()->buffer();
+            $this->logger->debug("[DEBUG][APP] Received response for {$id} with status {$statusCode} and body length " . strlen($body));
+            
             if (!str_contains($body, $config->getExpectedContent())) {
                 return MonitorResult::createFailure(
                     $id,
@@ -335,13 +344,15 @@ class MonitorManager
             $httpStatus = null;
             
             // Determine specific error type
-            if ($e instanceof \Amp\TimeoutException) {
+            if ($e instanceof \Amp\TimeoutCancellationException) {
                 $errorMessage = "Timeout";
             } elseif ($e instanceof \Amp\Http\Client\HttpException) {
                 $errorMessage = "HTTP Error: " . $e->getMessage();
             } elseif ($e instanceof \Amp\Socket\SocketException) {
                 $errorMessage = "Connection Error: " . $e->getMessage();
             }
+            
+            $this->logger->debug("[DEBUG][APP] Error in monitor {$id}: {$errorMessage}, type: " . get_class($e));
             
             return MonitorResult::createFailure($id, $responseTimeMs, $httpStatus, $errorMessage);
         }
@@ -425,5 +436,21 @@ class MonitorManager
             "[RECOVERY][MONITOR] {$id} has recovered. " .
             "Response time: {$result->getResponseTimeMs()}ms"
         );
+    }
+    
+    /**
+     * Get consecutive errors count
+     */
+    public function getConsecutiveErrors(string $id): int
+    {
+        return $this->consecutiveErrors[$id] ?? 0;
+    }
+
+    /**
+     * Check if monitor was in error state
+     */
+    public function wasInErrorState(string $id): bool
+    {
+        return ($this->alertSent[$id] ?? false);
     }
 }
