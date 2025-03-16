@@ -75,12 +75,16 @@ class MonitorManager
             $this->stop();
         }
         
+        // Keep track of removed monitors to clean up their data
+        $oldMonitorIds = array_keys($this->monitors);
         $newMonitors = [];
+        $newMonitorIds = [];
         
         foreach ($monitorsConfig as $monitorConfig) {
             $config = MonitorConfig::fromArray($monitorConfig);
             $id = $config->getId();
             $newMonitors[$id] = $config;
+            $newMonitorIds[] = $id;
             
             // Initialize tracking arrays for new monitors
             if (!isset($this->results[$id])) {
@@ -93,6 +97,26 @@ class MonitorManager
             
             if (!isset($this->alertSent[$id])) {
                 $this->alertSent[$id] = false;
+            }
+        }
+        
+        // Find removed monitors
+        $removedMonitorIds = array_diff($oldMonitorIds, $newMonitorIds);
+        
+        // Clean up data for removed monitors
+        foreach ($removedMonitorIds as $id) {
+            $this->logger->debug("[DEBUG][APP] Removing monitor {$id} from configuration");
+            if (isset($this->results[$id])) {
+                unset($this->results[$id]);
+            }
+            if (isset($this->consecutiveErrors[$id])) {
+                unset($this->consecutiveErrors[$id]);
+            }
+            if (isset($this->alertSent[$id])) {
+                unset($this->alertSent[$id]);
+            }
+            if (isset($this->monitorTasks[$id])) {
+                unset($this->monitorTasks[$id]);
             }
         }
         
@@ -137,7 +161,11 @@ class MonitorManager
         
         // Wait for all tasks to complete
         foreach ($this->monitorTasks as $task) {
-            $task->await();
+            try {
+                $task->await();
+            } catch (\Throwable $e) {
+                $this->logger->debug("[DEBUG][APP] Error awaiting task: {$e->getMessage()}");
+            }
         }
         
         $this->monitorTasks = [];

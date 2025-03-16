@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Keira WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h2 { color: #333; }
+        #messages { 
+            height: 400px; 
+            overflow-y: scroll; 
+            border: 1px solid #ccc; 
+            padding: 10px;
+            margin-bottom: 10px; 
+            background-color: #f9f9f9;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { margin: 0; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h2>Keira WebSocket Test</h2>
+    <div id="messages"></div>
+    <button id="clear">Clear Messages</button>
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const clearBtn = document.getElementById('clear');
+        
+        function addMessage(text, className) {
+            const p = document.createElement('p');
+            p.className = className || '';
+            p.innerHTML = text;
+            messagesDiv.appendChild(p);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        clearBtn.addEventListener('click', () => {
+            messagesDiv.innerHTML = '';
+        });
+        
+        // Connect to WebSocket server
+        addMessage('Connecting to WebSocket server...', 'info');
+        const ws = new WebSocket('ws://' + window.location.host + '/realtime/');
+        
+        ws.onopen = function() {
+            addMessage('<strong>Connected to WebSocket server</strong>', 'success');
+        };
+        
+        ws.onmessage = function(event) {
+            try {
+                // Try to parse as JSON for prettier display
+                const data = JSON.parse(event.data);
+                const pre = document.createElement('pre');
+                pre.textContent = JSON.stringify(data, null, 2);
+                const p = document.createElement('p');
+                p.innerHTML = '<strong>Received:</strong> ';
+                p.appendChild(pre);
+                messagesDiv.appendChild(p);
+            } catch (e) {
+                // Fall back to plain text if not JSON
+                addMessage('<strong>Received:</strong> ' + event.data);
+            }
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        };
+        
+        ws.onerror = function(error) {
+            addMessage('<strong>Error:</strong> ' + error, 'error');
+        };
+        
+        ws.onclose = function() {
+            addMessage('<strong>Connection closed</strong>', 'info');
+        };
+    </script>
+</body>
+</html>

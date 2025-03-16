@@ -88,9 +88,47 @@ class ApiServer
             }
         ));
         
+        // GET /ws-test - WebSocket test page
+        $this->router->addRoute('GET', '/ws-test', new ClosureRequestHandler(
+            function ($request) {
+                $templatePath = __DIR__ . '/../../../resources/templates/websocket-test.html';
+                
+                if (!file_exists($templatePath)) {
+                    $this->logger->error("[ERROR][APP] WebSocket test template not found: {$templatePath}");
+                    return new \Amp\Http\Server\Response(
+                        status: 500,
+                        headers: ['Content-Type' => 'text/plain'],
+                        body: 'Template file not found'
+                    );
+                }
+                
+                $html = file_get_contents($templatePath);
+                
+                return new \Amp\Http\Server\Response(
+                    status: 200,
+                    headers: ['Content-Type' => 'text/html'],
+                    body: $html
+                );
+            }
+        ));
+        
         // WebSocket /realtime/ - Real-time updates
         $webSocketHandler = new WebSocketHandler($this->monitorManager, $this->logger);
-        $acceptor = new AllowOriginAcceptor(['*']); // Allow any origin for this example
+        
+        // Allow more specific origins for the WebSocket connections
+        $origins = [
+            'http://localhost:8080',
+            'http://127.0.0.1:8080',
+            'http://0.0.0.0:8080',
+            'ws://localhost:8080',
+            'ws://127.0.0.1:8080',
+            'ws://0.0.0.0:8080',
+            'http://' . $_SERVER['HTTP_HOST'] ?? 'localhost:8080',
+            'ws://' . $_SERVER['HTTP_HOST'] ?? 'localhost:8080',
+        ];
+        $this->logger->debug("[DEBUG][APP] Setting up WebSocket with allowed origins: " . implode(", ", $origins));
+        $acceptor = new \Amp\Websocket\Server\AllowOriginAcceptor($origins);
+        
         $websocket = new Websocket($this->server, $this->logger, $acceptor, $webSocketHandler);
         $this->router->addRoute('GET', '/realtime/', $websocket);
     }
