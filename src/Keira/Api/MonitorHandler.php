@@ -26,7 +26,9 @@ class MonitorHandler
      */
     public function __invoke(Request $request): Response
     {
-        $id = $request->getAttribute('id');
+        // In Amp v3 Router, route parameters are stored in the Router::class attribute
+        $args = $request->getAttribute(\Amp\Http\Server\Router::class);
+        $id = $args['id'] ?? null;
         
         if ($id === null) {
             return new Response(
