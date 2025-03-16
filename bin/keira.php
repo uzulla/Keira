@@ -13,6 +13,7 @@ use Keira\Slack\SlackNotifier;
 use Keira\Util\DataRetention;
 use Keira\Util\Logger;
 use Keira\Util\SignalHandler;
+use Keira\WebSocket\WebSocketServer;
 
 // Autoload
 if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
@@ -26,25 +27,27 @@ if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
 $options = getopt('', ['config:']);
 $configPath = $options['config'] ?? __DIR__ . '/../config.json';
 
-// Create logger
-$logger = Logger::create();
-$logger->info("[INFO][APP] Starting Keira Web Monitor");
+// Create loggers
+$appLogger = Logger::createAppLogger();
+$monitorLogger = Logger::createMonitorLogger();
+
+$appLogger->info("Starting Keira Web Monitor");
 
 try {
     // Load configuration
-    $logger->info("[INFO][APP] Loading configuration from {$configPath}");
+    $appLogger->info("Loading configuration from {$configPath}");
     $configLoader = new ConfigLoader($configPath);
     $config = $configLoader->load();
     
     // Create monitor manager
-    $monitorManager = new MonitorManager($logger);
+    $monitorManager = new MonitorManager($monitorLogger);
     $monitorManager->configure($config['monitors']);
     
     // Create Slack notifier
     $slackNotifier = new SlackNotifier(
         $config['slack']['webhook_url'],
         $config['slack']['channel'],
-        $logger
+        $appLogger
     );
     
     // Register Slack notifier with monitor manager
@@ -72,25 +75,25 @@ try {
     });
     
     // Create signal handler
-    $signalHandler = new SignalHandler($configLoader, $monitorManager, $logger);
+    $signalHandler = new SignalHandler($configLoader, $monitorManager, $appLogger);
     $signalHandler->register();
     
     // Create data retention manager
-    $dataRetention = new DataRetention($monitorManager, $logger);
+    $dataRetention = new DataRetention($monitorManager, $appLogger);
     $dataRetention->start();
     
     // Create API server
-    $apiServer = new ApiServer('0.0.0.0', 8080, $monitorManager, $logger);
+    $apiServer = new ApiServer('0.0.0.0', 8080, $monitorManager, $appLogger);
     $apiServer->start();
     
     // Start monitoring
     $monitorManager->start();
     
-    $logger->info("[INFO][APP] Keira Web Monitor started successfully");
+    $appLogger->info("Keira Web Monitor started successfully");
     
     // Run the event loop
     Loop::run();
 } catch (\Throwable $e) {
-    $logger->error("[ERROR][APP] Fatal error: {$e->getMessage()}");
+    $appLogger->error("Fatal error: {$e->getMessage()}");
     exit(1);
 }
