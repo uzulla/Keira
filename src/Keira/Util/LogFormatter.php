@@ -9,6 +9,10 @@ use Monolog\LogRecord;
 
 /**
  * Custom log formatter for Keira
+ * 
+ * Formats logs according to the required format:
+ * - Application logs: [INFO][APP] Application started successfully
+ * - Monitor logs: [INFO][MONITOR] service-api-1, OK, 120ms, 200
  */
 class LogFormatter implements FormatterInterface
 {

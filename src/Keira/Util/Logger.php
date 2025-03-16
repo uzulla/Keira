@@ -11,6 +11,10 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Logger factory for Keira
+ * 
+ * Creates loggers with the required format:
+ * - Application logs: [INFO][APP] Application started successfully
+ * - Monitor logs: [INFO][MONITOR] service-api-1, OK, 120ms, 200
  */
 class Logger
 {
@@ -32,6 +36,38 @@ class Logger
         
         // Add a processor to handle message placeholders
         $logger->pushProcessor(new PsrLogMessageProcessor());
+        
+        return $logger;
+    }
+    
+    /**
+     * Create a logger for application logs
+     */
+    public static function createAppLogger(string $name = 'keira', string $logFile = 'php://stdout'): LoggerInterface
+    {
+        $logger = self::create($name, $logFile);
+        
+        // Add a processor to set the category to APP
+        $logger->pushProcessor(function (array $record) {
+            $record['context']['category'] = 'APP';
+            return $record;
+        });
+        
+        return $logger;
+    }
+    
+    /**
+     * Create a logger for monitor logs
+     */
+    public static function createMonitorLogger(string $name = 'keira', string $logFile = 'php://stdout'): LoggerInterface
+    {
+        $logger = self::create($name, $logFile);
+        
+        // Add a processor to set the category to MONITOR
+        $logger->pushProcessor(function (array $record) {
+            $record['context']['category'] = 'MONITOR';
+            return $record;
+        });
         
         return $logger;
     }
