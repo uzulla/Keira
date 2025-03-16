@@ -48,9 +48,10 @@ class Logger
         $logger = self::create($name, $logFile);
         
         // Add a processor to set the category to APP
-        $logger->pushProcessor(function (array $record) {
-            $record['context']['category'] = 'APP';
-            return $record;
+        $logger->pushProcessor(function ($record) {
+            $context = $record->context;
+            $context['category'] = 'APP';
+            return $record->with(context: $context);
         });
         
         return $logger;
@@ -64,9 +65,10 @@ class Logger
         $logger = self::create($name, $logFile);
         
         // Add a processor to set the category to MONITOR
-        $logger->pushProcessor(function (array $record) {
-            $record['context']['category'] = 'MONITOR';
-            return $record;
+        $logger->pushProcessor(function ($record) {
+            $context = $record->context;
+            $context['category'] = 'MONITOR';
+            return $record->with(context: $context);
         });
         
         return $logger;
