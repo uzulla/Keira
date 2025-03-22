@@ -66,6 +66,26 @@ export KEIRA_CONFIG_PATH=/path/to/config.json
 php bin/keira.php
 ```
 
+### with Docker
+
+```bash
+# Build the Docker image
+docker build -t keira .
+```
+
+### Running with Docker
+
+```bash
+# Run Keira (mount your config file)
+docker run keira
+
+# Run Keira with a your configuration file.
+docker run -v /path/to/your/config.json:/keira/config.json keira
+
+# Expose API and WebSocket ports
+docker run -v /path/to/your/config.json:/keira/config.json -p 8080:8080 -p 8081:8081 keira
+```
+
 ## Signal Handling
 
 - `SIGHUP`: Reload configuration (preserves monitoring data)
