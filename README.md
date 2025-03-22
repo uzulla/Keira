@@ -76,8 +76,11 @@ docker build -t keira .
 ### Running with Docker
 
 ```bash
-# Run Keira (mount your config file)
+# Run Keira
 docker run keira
+
+# Run Keira and if you want to kill with C-c
+docker run -it keira
 
 # Run Keira with a your configuration file.
 docker run -v /path/to/your/config.json:/keira/config.json keira
