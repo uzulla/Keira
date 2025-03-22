@@ -62,6 +62,9 @@
         // Object to track monitor datasets by ID
         const monitorDatasets = {};
         
+        // Minimum time between data points in ms to help with visualization
+        const MIN_DATA_INTERVAL = 0; // Set to 0 to keep all points
+        
         // Initialize chart
         const ctx = document.getElementById('responseTimeChart').getContext('2d');
         const chart = new Chart(ctx, {
@@ -75,6 +78,12 @@
                         title: {
                             display: true,
                             text: 'Timestamp'
+                        },
+                        ticks: {
+                            // Only show a subset of ticks to avoid overcrowding
+                            maxTicksLimit: 10,
+                            maxRotation: 45,
+                            minRotation: 45
                         }
                     },
                     y: {
@@ -88,6 +97,33 @@
                 interaction: {
                     mode: 'index',
                     intersect: false
+                },
+                elements: {
+                    line: {
+                        tension: 0.3
+                    },
+                    point: {
+                        radius: function(context) {
+                            // Show points only at sparse intervals
+                            const datasetIndex = context.datasetIndex;
+                            const index = context.dataIndex;
+                            const dataset = context.chart.data.datasets[datasetIndex];
+                            
+                            // If this point has a value (not null/undefined)
+                            if (dataset.data[index] !== null && dataset.data[index] !== undefined) {
+                                // If it's the first or last point with a value, show it
+                                const isFirst = !dataset.data.slice(0, index).some(pt => pt !== null && pt !== undefined);
+                                const isLast = !dataset.data.slice(index + 1).some(pt => pt !== null && pt !== undefined);
+                                
+                                if (isFirst || isLast) return 3;
+                                
+                                // Only show a subset of other points to make it cleaner
+                                return index % 4 === 0 ? 3 : 0;
+                            }
+                            
+                            return 0;
+                        }
+                    }
                 },
                 plugins: {
                     tooltip: {
@@ -105,9 +141,10 @@
         });
         
         function addDataPoint(id, timestamp, responseTime) {
-            // Format timestamp to be more readable (HH:MM:SS)
+            // Format timestamp to be more readable (HH:MM:SS.mmm)
             const date = new Date(timestamp);
-            const formattedTime = date.toLocaleTimeString();
+            // Include milliseconds for more precise tracking
+            const formattedTime = date.toLocaleTimeString() + '.' + date.getMilliseconds().toString().padStart(3, '0');
             
             // Check if this is a new monitor ID we haven't seen before
             if (!monitorDatasets[id]) {
@@ -123,7 +160,8 @@
                     backgroundColor: color,
                     tension: 0.1,
                     fill: false,
-                    pointRadius: 3
+                    pointRadius: 3,
+                    spanGaps: true
                 };
                 
                 // Add the dataset to chart
@@ -137,10 +175,22 @@
             if (!allTimestamps.includes(formattedTime)) {
                 allTimestamps.push(formattedTime);
                 
+                // Parse timestamp parts for accurate sorting
+                const sortTimestamps = (a, b) => {
+                    const [timeA, msA = '0'] = a.split('.');
+                    const [timeB, msB = '0'] = b.split('.');
+                    
+                    const dateA = new Date('1970/01/01 ' + timeA);
+                    const dateB = new Date('1970/01/01 ' + timeB);
+                    
+                    if (dateA.getTime() === dateB.getTime()) {
+                        return parseInt(msA) - parseInt(msB);
+                    }
+                    return dateA - dateB;
+                };
+                
                 // Sort timestamps chronologically
-                allTimestamps.sort((a, b) => {
-                    return new Date('1970/01/01 ' + a) - new Date('1970/01/01 ' + b);
-                });
+                allTimestamps.sort(sortTimestamps);
                 
                 // Update chart labels
                 chartData.labels = [...allTimestamps];
