@@ -2,11 +2,13 @@
 <html>
 <head>
     <title>Keira WebSocket Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         h2 { color: #333; }
         #messages { 
-            height: 400px; 
+            height: 200px; 
             overflow-y: scroll; 
             border: 1px solid #ccc; 
             padding: 10px;
@@ -17,15 +19,161 @@
         .error { color: red; }
         .info { color: blue; }
         pre { margin: 0; white-space: pre-wrap; }
+        #chart-container {
+            width: 100%;
+            height: 300px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
     <h2>Keira WebSocket Test</h2>
+    <div id="chart-container">
+        <canvas id="responseTimeChart"></canvas>
+    </div>
+    <div id="legend-container"></div>
     <div id="messages"></div>
     <button id="clear">Clear Messages</button>
     <script>
         const messagesDiv = document.getElementById('messages');
         const clearBtn = document.getElementById('clear');
+        const chartData = {
+            labels: [],
+            datasets: []
+        };
+        
+        // Track all timestamps to manage the time axis
+        let allTimestamps = [];
+        
+        // Color palette for different monitors
+        const colorPalette = [
+            'rgb(75, 192, 192)',   // teal
+            'rgb(255, 99, 132)',   // red
+            'rgb(54, 162, 235)',   // blue
+            'rgb(255, 206, 86)',   // yellow
+            'rgb(153, 102, 255)',  // purple
+            'rgb(255, 159, 64)',   // orange
+            'rgb(46, 204, 113)',   // green
+            'rgb(231, 76, 60)',    // dark red
+            'rgb(52, 152, 219)',   // light blue
+            'rgb(241, 196, 15)'    // gold
+        ];
+        
+        // Object to track monitor datasets by ID
+        const monitorDatasets = {};
+        
+        // Initialize chart
+        const ctx = document.getElementById('responseTimeChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Timestamp'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Response Time (ms)'
+                        },
+                        beginAtZero: true
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    tooltip: {
+                        mode: 'index'
+                    },
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 10
+                        }
+                    }
+                }
+            }
+        });
+        
+        function addDataPoint(id, timestamp, responseTime) {
+            // Format timestamp to be more readable (HH:MM:SS)
+            const date = new Date(timestamp);
+            const formattedTime = date.toLocaleTimeString();
+            
+            // Check if this is a new monitor ID we haven't seen before
+            if (!monitorDatasets[id]) {
+                // Get next color from palette (cycle through colors if needed)
+                const colorIndex = Object.keys(monitorDatasets).length % colorPalette.length;
+                const color = colorPalette[colorIndex];
+                
+                // Create a new dataset for this monitor
+                const newDataset = {
+                    label: `${id} - Response Time (ms)`,
+                    data: [],
+                    borderColor: color,
+                    backgroundColor: color,
+                    tension: 0.1,
+                    fill: false,
+                    pointRadius: 3
+                };
+                
+                // Add the dataset to chart
+                chartData.datasets.push(newDataset);
+                
+                // Track the dataset's index for this monitor
+                monitorDatasets[id] = chartData.datasets.length - 1;
+            }
+            
+            // Add timestamp to the list of all timestamps if it's not already there
+            if (!allTimestamps.includes(formattedTime)) {
+                allTimestamps.push(formattedTime);
+                
+                // Sort timestamps chronologically
+                allTimestamps.sort((a, b) => {
+                    return new Date('1970/01/01 ' + a) - new Date('1970/01/01 ' + b);
+                });
+                
+                // Update chart labels
+                chartData.labels = [...allTimestamps];
+            }
+            
+            // Get the index of this timestamp
+            const timeIndex = allTimestamps.indexOf(formattedTime);
+            
+            // Get the dataset index for this monitor
+            const datasetIndex = monitorDatasets[id];
+            
+            // Make sure the dataset has data points for all timestamps (fill with null for missing points)
+            while (chartData.datasets[datasetIndex].data.length < allTimestamps.length) {
+                chartData.datasets[datasetIndex].data.push(null);
+            }
+            
+            // Update the specific data point
+            chartData.datasets[datasetIndex].data[timeIndex] = responseTime;
+            
+            // Keep only the last 50 data points for better visualization
+            if (allTimestamps.length > 50) {
+                allTimestamps.shift();
+                chartData.labels.shift();
+                
+                // Remove the first data point from each dataset
+                chartData.datasets.forEach(dataset => {
+                    dataset.data.shift();
+                });
+            }
+            
+            // Update chart
+            chart.update();
+        }
         
         function addMessage(text, className) {
             const p = document.createElement('p');
@@ -37,6 +185,15 @@
         
         clearBtn.addEventListener('click', () => {
             messagesDiv.innerHTML = '';
+            // Clear chart data
+            chartData.labels = [];
+            chartData.datasets = [];
+            allTimestamps = [];
+            // Need to create a new object since const was used
+            Object.keys(monitorDatasets).forEach(key => {
+                delete monitorDatasets[key];
+            });
+            chart.update();
         });
         
         // Connect to WebSocket server
@@ -57,6 +214,11 @@
                 p.innerHTML = '<strong>Received:</strong> ';
                 p.appendChild(pre);
                 messagesDiv.appendChild(p);
+                
+                // Add data to chart if it has the right format
+                if (data.id && data.timestamp && data.response_time_ms !== undefined) {
+                    addDataPoint(data.id, data.timestamp, data.response_time_ms);
+                }
             } catch (e) {
                 // Fall back to plain text if not JSON
                 addMessage('<strong>Received:</strong> ' + event.data);
