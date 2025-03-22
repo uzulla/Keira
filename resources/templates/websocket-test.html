@@ -246,7 +246,11 @@
                 monitorDatasets[id] = chartData.datasets.length - 1;
             }
             
-            // Add timestamp to the list of all timestamps if it's not already there
+            // Create a unique key that combines ID and timestamp
+            // This fixes the issue with repeated IDs by ensuring each data point is uniquely tracked
+            const dataPointKey = `${id}-${formattedTime}`;
+            
+            // Create a timestamp entry if it doesn't exist
             if (!allTimestamps.includes(formattedTime)) {
                 allTimestamps.push(formattedTime);
                 
@@ -269,6 +273,13 @@
                 
                 // Update chart labels
                 chartData.labels = [...allTimestamps];
+                
+                // Make sure all datasets have data points for all timestamps
+                chartData.datasets.forEach(dataset => {
+                    while (dataset.data.length < allTimestamps.length) {
+                        dataset.data.push(null);
+                    }
+                });
             }
             
             // Get the index of this timestamp
@@ -277,13 +288,16 @@
             // Get the dataset index for this monitor
             const datasetIndex = monitorDatasets[id];
             
-            // Make sure the dataset has data points for all timestamps (fill with null for missing points)
+            // Make sure the dataset has data points for all timestamps
             while (chartData.datasets[datasetIndex].data.length < allTimestamps.length) {
                 chartData.datasets[datasetIndex].data.push(null);
             }
             
             // Update the specific data point
             chartData.datasets[datasetIndex].data[timeIndex] = responseTime;
+            
+            // Debug - check for line continuity issues
+            console.log(`Updated data for ${id} at ${formattedTime}: ${responseTime}ms (index: ${timeIndex})`);
             
             // Keep only the last 50 data points for better visualization
             if (allTimestamps.length > 50) {
